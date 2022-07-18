@@ -1,0 +1,11 @@
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.pdf
+*.synctex.gz
+*.dvi
+*.svg
+c.png
+sommets.csv
+*.tex
