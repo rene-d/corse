@@ -330,7 +330,7 @@ def calcule(width, thickness, show_details=False, model_raw=corse_raw, output_fi
 def main():
 
     parse = argparse.ArgumentParser(
-        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> mm"
+        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> cm"
     )
     parse.add_argument("-c", "--contour", action="store_true", help="affiche le contour uniqument")
     parse.add_argument("-o", "--output", type=Path, default="corse.pdf", help="fichier PDF")
@@ -340,7 +340,7 @@ def main():
         type=float,
         nargs="?",
         default=25,
-        help="hauteur du modèle en cm",
+        help="taille du modèle en cm",
     )
     parse.add_argument(
         "thickness",
