@@ -52,10 +52,9 @@ mire_raw = [
 
 
 def rotate(xy, radians):
-    x, y = xy
     c, s = np.cos(radians), np.sin(radians)
     j = np.matrix([[c, s], [-s, c]])
-    m = np.dot(j, [x, y])
+    m = np.dot(j, xy)
     r_xy = float(m.T[0]), float(m.T[1])
     return np.array(r_xy)
 
