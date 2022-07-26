@@ -2,65 +2,16 @@
 
 # rene-d 2020/07/23
 
-from sys import argv
-import operator
-from PIL import Image, ImageDraw, ImageFont, ImageTk
-import numpy as np
-
-import csv
 import argparse
+
+# import csv
+import operator
 import tkinter as tk
 
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-# relevé des points dans l'image corse1.png
-corse_raw = [
-    (1198, 324),  # Bonifacio
-    (966, 239),
-    (791, 250),
-    (684, 186),  # Aleria
-    (380, 222),
-    (319, 265),
-    (214, 255),
-    (79, 291),
-    (88, 339),
-    (207, 345),
-    (230, 329),  # Nonza
-    (310, 344),  # Saint-Florent
-    (272, 385),
-    (272, 435),
-    (328, 471),
-    (372, 578),  # Algajola
-    (435, 640),  # ajouté
-    (550, 702),
-    (606, 621),
-    (634, 699),
-    (705, 672),  # Cargese
-    (754, 588),
-    (820, 664),
-    (862, 648),  # Sanguinaires
-    (842, 557),  # Ajaccio
-    (958, 603),
-    (999, 491),  # Propriano
-    (1053, 552),
-    (1127, 469),
-    (1147, 378),
-    (1180, 380),
-]
-
-croix_raw = [
-    (0, 1125),
-    (400, 1125),
-    (400, 1510),
-    (600, 1510),
-    (600, 1125),
-    (1000, 1125),
-    (1000, 915),
-    (600, 915),
-    (600, 0),
-    (400, 0),
-    (400, 915),
-    (0, 915),
-]
+from corse1_png import POINTS  # relevé des points dans l'image corse1.png
 
 
 def rotate(xy, radians):
@@ -75,44 +26,24 @@ def calcule(
     width,
     thickness,
     show_background=False,
-    precision=1,
-    min_x=37,
-    min_y=113,
-    max_x=1247,
-    max_y=774,
-    ratio_x=1,
-    ratio_y=1,
-    corse_raw=corse_raw,
+    points=POINTS,
 ):
 
-    corse = [(x * ratio_x, y * ratio_y) for x, y in corse_raw]
-
-    min_x, min_y = (min_x * ratio_x, min_y * ratio_y)
-    max_x, max_y = (max_x * ratio_x, max_y * ratio_y)
+    scale = 1000 / 424
+    corse = [(x * scale, y * scale) for x, y in points]
 
     if show_background:
-        # image = Image.open("1000px-Corse_region_location_map.svg.png")
-        # image = Image.open("Corse_region_relief_location_map.jpg")
         image = Image.open("corse1.png")
+        image = image.resize((round(776 * scale), 1000), Image.Resampling.BICUBIC)
     else:
-        # image = Image.new("RGB", size=(1972, 1000), color=(255, 255, 255))
-        image = Image.new("RGB", size=(776, 424), color=(255, 255, 255))
+        image = Image.new("RGB", size=(round(776 * scale), 1000), color=(255, 255, 255))
 
-    image = image.resize((1972 * precision, 1000 * precision), Image.Resampling.BICUBIC)
-
-    font_number = ImageFont.truetype("HelveticaNeue.ttc", 16 * precision)
-    font_angle = ImageFont.truetype("HelveticaNeue.ttc", 20 * precision)
-    font_fixed = ImageFont.truetype("Menlo", 17 * precision)
+    font_number = ImageFont.truetype("HelveticaNeue.ttc", 16)
+    font_angle = ImageFont.truetype("HelveticaNeue.ttc", 20)
+    font_fixed = ImageFont.truetype("Menlo", 17)
 
     # recalcule les coordonnées des points dans l'image
     image_width, image_height = image.size
-    corse2 = []
-    for xy in corse:
-        x, y = xy
-        x = round((x - min_x) / (max_x - min_x) * image_width)
-        y = round((y - min_y) / (max_y - min_y) * image_height)
-        corse2.append((x, y))
-    corse = corse2
 
     # dimensions max de la Corse en pixels
     dim_x = max(map(operator.itemgetter(0), corse)) - min(map(operator.itemgetter(0), corse))
@@ -151,7 +82,7 @@ def calcule(
     corse.pop()
 
     # pour écrire les informations sur chaque segment/sommet
-    csv_writer = csv.writer(open("sommets.csv", "w"))
+    # csv_writer = csv.writer(open("sommets.csv", "w"))
 
     angles = []
     total_length = 0
@@ -192,15 +123,15 @@ def calcule(
             fill=(0, 0, 0),
         )
 
-        row = [
-            i + 1,
-            round(p[0] * scale, 1),
-            round(p[1] * scale, 1),
-            round(length, 1),
-            round(angle, 1),
-            round(cut_angle, 1),
-        ]
-        csv_writer.writerow(row)
+        # row = [
+        #     i + 1,
+        #     round(p[0] * scale, 1),
+        #     round(p[1] * scale, 1),
+        #     round(length, 1),
+        #     round(angle, 1),
+        #     round(cut_angle, 1),
+        # ]
+        # csv_writer.writerow(row)
 
         sz = draw.textsize(f"{i + 1}", font=font_number)
         draw.rectangle(
@@ -300,9 +231,7 @@ def calcule(
     return image
 
 
-def show_model(width=1972, height=1000):
-    # min_x = 0
-    # min_y = 0
+def show_model():
 
     root = tk.Tk()
 
@@ -317,14 +246,11 @@ def show_model(width=1972, height=1000):
     def upd():
         nonlocal view, canvas, image
 
-        print("x", canvas.winfo_width())
-        print(canvas.winfo_width())
-
-        image = calcule(915, 20, True, 1)
+        image = calcule(915, 20, True)
         sz = image.size
         print(sz)
         image = image.convert(mode="RGB")
-        image = image.resize(map(int, (1972 / 2, 1000 / 2)), Image.Resampling.BICUBIC)
+        image = image.resize(map(int, (1830 / 2, 1000 / 2)), Image.Resampling.BICUBIC)
         image = ImageTk.PhotoImage(image)
 
         if not view:
@@ -334,7 +260,6 @@ def show_model(width=1972, height=1000):
             view.configure(image=image)
 
     def callback(event):
-        # nonlocal min_x, min_y
 
         if event.type == tk.EventType.Motion:
             return
@@ -342,14 +267,6 @@ def show_model(width=1972, height=1000):
 
         if event.keysym == "Escape" or event.keysym == "q" or event.keysym == "x":
             root.destroy()
-        # elif event.keysym == "Right":
-        #     min_x += 1
-        # elif event.keysym == "Left":
-        #     min_x -= 1
-        # elif event.keysym == "Up":
-        #     min_y -= 1
-        # elif event.keysym == "Down":
-        #     min_y += 1
         elif event.keysym == "u":
             upd()
 
@@ -389,8 +306,7 @@ def main():
     if args.model:
         show_model()
     else:
-        # image = calcule(args.scale, args.thickness, args.model, 2, corse_raw=[(x/4+300,600-y/4) for x,y in croix_raw])
-        image = calcule(args.scale, args.thickness, args.model, 2)
+        image = calcule(args.scale, args.thickness, args.model)
         image.show("Corse")
 
         image.putalpha(128)

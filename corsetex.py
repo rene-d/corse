@@ -1,54 +1,15 @@
 #!/usr/bin/env python3
 
-# rene-d 2020/07/23
+# rene-d 2022
 
 import argparse
 import subprocess
 from pathlib import Path
+import json
 
 import numpy as np
 
-# relevé des points dans l'image corse1.png
-corse_raw = [
-    (1198, 324),  # Bonifacio
-    (966, 239),
-    (791, 250),
-    (684, 186),  # Aleria
-    (380, 222),
-    (319, 265),
-    (214, 255),
-    (79, 291),
-    (88, 339),
-    (207, 345),
-    (230, 329),  # Nonza
-    (310, 344),  # Saint-Florent
-    (272, 385),
-    (272, 435),
-    (328, 471),
-    (372, 578),  # Algajola
-    (435, 640),  # ajouté
-    (550, 702),
-    (606, 621),
-    (634, 699),
-    (705, 672),  # Cargese
-    (754, 588),
-    (820, 664),
-    (862, 648),  # Sanguinaires
-    (842, 557),  # Ajaccio
-    (958, 603),
-    (999, 491),  # Propriano
-    (1053, 552),
-    (1127, 469),
-    (1147, 378),
-    (1180, 380),
-]
-
-mire_raw = [
-    (0, 0),
-    (0, 1),
-    (1, 1),
-    (1, 0),
-]
+from corse1_png import POINTS  # relevé des points dans l'image corse1.png
 
 
 def rotate(xy, radians):
@@ -148,7 +109,9 @@ def tikz_image(corse, thickness, details=True):
         # affiche le numéro du segment
         if details and np.linalg.norm(v) > 1:
             xy_middle = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
-            picture.append(rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};")
+            picture.append(
+                rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};"
+            )
 
         # traits de construction (pour vérifier les calculs!)
         r = rotate(u, -np.pi / 2)
@@ -176,7 +139,9 @@ def tikz_image(corse, thickness, details=True):
             # angle du contour
             p_angle = a - ab * 0.4
             angle = np.degrees(a2)
-            picture.append(rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};")
+            picture.append(
+                rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};"
+            )
 
     # dessine le contour intérieur
     if details:
@@ -221,18 +186,18 @@ def tikz_corse(picture, x1, y1, col, row, landscape=True):
         return r"\newpage" + page
 
 
-def calcule(width, thickness, show_details=False, model_raw=corse_raw, output_file=None):
+def calcule(width, thickness,  points,show_details=False, output_file=None):
 
     page_x, page_y = 27, 18
 
     # recalcule les coordonnées des points dans l'image
-    min_x = min(x for x, _ in model_raw)
-    max_x = max(x for x, _ in model_raw)
-    min_y = min(y for _, y in model_raw)
-    max_y = max(y for _, y in model_raw)
+    min_x = min(x for x, _ in points)
+    max_x = max(x for x, _ in points)
+    min_y = min(y for _, y in points)
+    max_y = max(y for _, y in points)
     scale_width = 1 / (max_x - min_x) * width
     model = []
-    for x, y in model_raw:
+    for x, y in points:
         x = (x - min_x) * scale_width
         y = (y - min_y) * scale_width
         model.append((x, y))
@@ -265,10 +230,10 @@ def calcule(width, thickness, show_details=False, model_raw=corse_raw, output_fi
         nb_y = np.math.ceil(dim_y / page_x)
         landscape = False
 
-        for x in range(nb_x):
-            for y in range(nb_y):
+        for y in range(nb_y):
+            for x in range(nb_x):
                 cmd = tikz_corse(picture_command, page_y, page_x, x, y, landscape)
-                print(cmd)
+                print("page", 1 + x + y * nb_x, cmd)
                 document.append(cmd)
 
     else:
@@ -276,10 +241,10 @@ def calcule(width, thickness, show_details=False, model_raw=corse_raw, output_fi
         nb_y = np.math.ceil(dim_y / page_y)
         landscape = True
 
-        for x in range(nb_x):
-            for y in range(nb_y):
+        for y in range(nb_y):
+            for x in range(nb_x):
                 cmd = tikz_corse(picture_command, page_x, page_y, x, y, landscape)
-                print(cmd)
+                print("page", 1 + x + y * nb_x, cmd)
                 document.append(cmd)
 
     document.append(r"\newpage\subsection*{Dimensions}")
@@ -292,7 +257,7 @@ def calcule(width, thickness, show_details=False, model_raw=corse_raw, output_fi
 
     document.append(
         r"""\subsection*{Segments}
-\textit{Les angles sont donnés pour l'extrémité de fin du segment.}\newline
+\textit{Les angles sont donnés pour l'extrémité de fin du segment (avec le segment suivant donc).}\newline
 \newline
 \pgfplotstabletypeset[
 	col sep=comma,
@@ -362,7 +327,7 @@ def main():
         metavar="échelle",
         type=float,
         nargs="?",
-        default=25,
+        default=27,
         help="taille du modèle en cm",
     )
     parse.add_argument(
@@ -376,8 +341,12 @@ def main():
 
     args = parse.parse_args()
 
-    # calcule(args.size, args.thickness / 10, not args.contour, mire_raw)
-    calcule(args.size, args.thickness / 10, not args.contour, output_file=args.output)
+    if Path("corse2.json").exists():
+        points = json.loads(Path("corse2.json").read_text())
+    else:
+        points = POINTS
+
+    calcule(args.size, args.thickness / 10, points, not args.contour, output_file=args.output)
 
 
 if __name__ == "__main__":

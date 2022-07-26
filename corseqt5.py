@@ -1,53 +1,17 @@
 #!/usr/bin/env python3
+# rene-d 2022
 
+import math
+import json
+from pathlib import Path
 import sys
 
-import numpy as np
 from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QPainter, QPen, QPixmap, QPolygon
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt5.QtGui import QPainter, QPen, QPixmap, QPolygon, QKeySequence
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget, QShortcut
 
-# relevé des points dans l'image corse1.png
-corse_raw = [
-    (1198, 324),  # Bonifacio
-    (966, 239),
-    (791, 250),
-    (684, 186),  # Aleria
-    (380, 222),
-    (319, 265),
-    (214, 255),
-    (79, 291),
-    (88, 339),
-    (207, 345),
-    (230, 329),  # Nonza
-    (310, 344),  # Saint-Florent
-    (272, 385),
-    (272, 435),
-    (328, 471),
-    (372, 578),  # Algajola
-    (435, 640),  # ajouté
-    (550, 702),
-    (606, 621),
-    (634, 699),
-    (705, 672),  # Cargese
-    (754, 588),
-    (820, 664),
-    (862, 648),  # Sanguinaires
-    (842, 557),  # Ajaccio
-    (958, 603),
-    (999, 491),  # Propriano
-    (1053, 552),
-    (1127, 469),
-    (1147, 378),
-    (1180, 380),
-]
-
-
-def rotate(x, y, angle):
-    c, s = np.cos(angle), np.sin(angle)
-    j = np.matrix([[c, s], [-s, c]])
-    m = np.dot(j, [x, y])
-    return round(m.A1[0]), round(m.A1[1])
+# points dans l'image corse2.png
+from corse2_png import POINTS
 
 
 class LineLabel(QLabel):
@@ -58,27 +22,107 @@ class LineLabel(QLabel):
     flag = False
     move_event = None
     info_event = None
-    points = QPolygon(QPoint(*rotate(x / 1.045 - 7, y / 1.045 - 130, -0.073)) for x, y in corse_raw)
+    points = QPolygon()
+    measure_mode = True
+    edit_mode = False
+    edit_point = -1
+    insert_point = -1
 
     def __init__(self, parent):
         super().__init__(parent)
+        if Path("corse2.json").exists():
+            with Path("corse2.json").open() as f:
+                self.points = QPolygon(
+                    [QPoint(*p) for p in json.load(f)]
+                )
+        else:
+            self.points = QPolygon(QPoint(x, y) for x, y in POINTS)
         self.setMouseTracking(True)
+
+    def toggle_edit(self):
+        self.edit_mode = not self.edit_mode
+        self.info_event(f"Edit mode: {self.edit_mode}")
+        self.update()
+
+        if self.edit_mode:
+            self.measure_mode = False
+        else:
+            self.unsetCursor()
+
+    def delete_point(self):
+        if self.edit_mode and self.edit_point >= 0:
+            self.points.remove(self.edit_point)
+            self.edit_point = -1
+            self.update()
+
+    def save_points(self):
+        with open("corse2.json", "w") as f:
+            json.dump(list((p.x(), p.y()) for p in self.points), f)
+
+    def reset(self):
+        self.points = QPolygon(QPoint(x, y) for x, y in POINTS)
+        self.edit_mode=False
+        self.measure_mode=False
+        self.update()
 
     def mousePressEvent(self, event):
         self.flag = True
         self.x0 = event.x()
         self.y0 = event.y()
 
+        if self.edit_mode and self.insert_point >= 0:
+            self.points.insert(self.insert_point, QPoint(event.x(), event.y()))
+            self.edit_point = self.insert_point
+            self.insert_point = -1
+
     def mouseReleaseEvent(self, event):
         self.flag = False
-        if self.info_event:
-            self.info_event(f"Longueur: {round(np.sqrt((self.x1 - self.x0) ** 2 + (self.y1 - self.y0) ** 2))}")
+        if self.edit_mode:
+            pass
+
+        else:
+            self.measure_mode = True
+            self.info_event(
+                f"L: {round(math.sqrt((self.x1 - self.x0) ** 2 + (self.y1 - self.y0) ** 2),1)}"
+                + f" | H: {abs(self.x1 - self.x0)}"
+                + f" | V: {abs(self.y1 - self.y0)}"
+                + f" | θ: {round(math.degrees(math.atan2(self.y1 - self.y0, self.x1 - self.x0)), 1)}°"
+            )
 
     def mouseMoveEvent(self, event):
         if self.flag:
-            self.x1 = event.x()
-            self.y1 = event.y()
+            if self.edit_mode:
+                if self.edit_point >= 0:
+                    self.points[self.edit_point] = QPoint(event.x(), event.y())
+            else:
+                self.x1 = event.x()
+                self.y1 = event.y()
             self.update()
+
+        elif self.edit_mode:
+
+            prev_p = self.points[-1]
+            self.edit_point = -1
+            self.insert_point = -1
+
+            for i, p in enumerate(self.points):
+                if (p - event.pos()).manhattanLength() < 5:
+                    self.edit_point = i
+                    self.setCursor(Qt.SizeAllCursor)
+                    self.info_event(f"Edit point: {i}")
+                    break
+
+                if ((p + prev_p) / 2 - event.pos()).manhattanLength() < 5:
+                    self.insert_point = i
+                    self.setCursor(Qt.SplitHCursor)
+                    self.info_event(f"Add point: {i}")
+                    break
+
+                prev_p = p
+
+            else:
+                self.info_event("Edit mode")
+                self.unsetCursor()
 
         if self.move_event:
             self.move_event(event.x(), event.y())
@@ -87,8 +131,22 @@ class LineLabel(QLabel):
         super().paintEvent(event)
         with QPainter(self) as painter:
             painter.setPen(QPen(Qt.red, 2, Qt.SolidLine))
-            painter.drawLine(self.x0, self.y0, self.x1, self.y1)
             painter.drawPolygon(self.points)
+
+            if self.edit_mode:
+                painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
+
+                prev_p = self.points[-1]
+                for p in self.points:
+                    painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
+                    painter.drawEllipse(p, 5, 5)
+                    painter.setPen(QPen(Qt.yellow, 2, Qt.SolidLine))
+                    painter.drawEllipse((p + prev_p) / 2, 5, 5)
+                    prev_p = p
+
+            elif self.measure_mode:
+                painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
+                painter.drawLine(self.x0, self.y0, self.x1, self.y1)
 
 
 class Contour(QWidget):
@@ -127,6 +185,11 @@ class Contour(QWidget):
 
         self.contour.move_event = lambda x, y: self.coords_label.setText("Coordonnées: ( %d , %d )" % (x, y))
         self.contour.info_event = lambda x: self.info_label.setText(x)
+
+        QShortcut(QKeySequence(Qt.Key_E), self, activated=self.contour.toggle_edit)
+        QShortcut(QKeySequence(Qt.Key_Backspace), self, activated=self.contour.delete_point)
+        QShortcut(QKeySequence(Qt.Key_S), self, activated=self.contour.save_points)
+        QShortcut(QKeySequence(Qt.Key_R), self, activated=self.contour.reset)
 
         self.show()
 
