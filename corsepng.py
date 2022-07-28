@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-
 # rene-d 2020/07/23
 
 import argparse
-
-# import csv
 import operator
 import tkinter as tk
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageTk
@@ -170,7 +168,7 @@ def calcule(
         a1 = angles[(i - 1) % len(corse)]
         a2 = angles[i]
 
-        v = np.array(p1) - np.array(p2)
+        v = np.array(p1) - np.array(p2)  # Nota: le polygone est orienté négativement
         u = v / np.linalg.norm(v) * thickness / scale
 
         # traits de construction (pour vérifier les calculs!)
@@ -218,7 +216,7 @@ def calcule(
     print(f"image size: {image.size}")
 
     # dimensions Corse et longueur du contour
-    info = f"dim: {dim_x*scale:.1f} x {dim_y*scale:.1f}\ncontour: {total_length:.0f}\nthickness: {thickness}"
+    info = f"dim: {dim_x*scale:.1f} x {dim_y*scale:.1f} mm\ncontour: {total_length:.0f} mm\nthickness: {thickness} mm"
     tw, th = draw.textsize(info, font=font_fixed)
     draw.text(
         ((image_width - tw) / 2, (image_height - th) / 2),
@@ -231,7 +229,7 @@ def calcule(
     return image
 
 
-def show_model():
+def show_model(output=None):
 
     root = tk.Tk()
 
@@ -242,13 +240,15 @@ def show_model():
 
     view = None
     image = None
+    image_raw = None
 
     def upd():
-        nonlocal view, canvas, image
+        nonlocal view, canvas, image, image_raw
 
         image = calcule(915, 20, True)
+        image_raw = image
         sz = image.size
-        print(sz)
+
         image = image.convert(mode="RGB")
         image = image.resize(map(int, (1830 / 2, 1000 / 2)), Image.Resampling.BICUBIC)
         image = ImageTk.PhotoImage(image)
@@ -263,10 +263,18 @@ def show_model():
 
         if event.type == tk.EventType.Motion:
             return
-        print(event)
+
+        # print("event", event)
 
         if event.keysym == "Escape" or event.keysym == "q" or event.keysym == "x":
             root.destroy()
+        elif event.keysym == "s":
+            if output and image_raw:
+                image_raw.save(output)
+                print(f"saved to {output}")
+            else:
+                print("no output file")
+
         elif event.keysym == "u":
             upd()
 
@@ -281,16 +289,17 @@ def show_model():
 def main():
 
     parse = argparse.ArgumentParser(
-        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> mm"
+        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> cm"
     )
     parse.add_argument("-m", "--model", action="store_true", help="affiche le modèle en fond")
+    parse.add_argument("-o", "--output", type=Path, help="fichier PNG généré")
     parse.add_argument(
         "scale",
         metavar="échelle",
         type=float,
         nargs="?",
-        default=915,
-        help="hauteur du modèle en mm",
+        default=91.5,
+        help="hauteur du modèle en cm",
     )
     parse.add_argument(
         "thickness",
@@ -304,13 +313,15 @@ def main():
     args = parse.parse_args()
 
     if args.model:
-        show_model()
+        show_model(args.output)
     else:
-        image = calcule(args.scale, args.thickness, args.model)
-        image.show("Corse")
+        image = calcule(args.scale * 10, args.thickness, args.model)
 
-        image.putalpha(128)
-        image.save("c.png")
+        if args.output:
+            # image.putalpha(128)
+            image.save(args.output)
+        else:
+            image.show("Corse")
 
 
 if __name__ == "__main__":

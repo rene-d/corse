@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # rene-d 2022
 
-import math
 import json
-from pathlib import Path
+import math
 import sys
+from pathlib import Path
 
 from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QPainter, QPen, QPixmap, QPolygon, QKeySequence
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget, QShortcut
+from PyQt5.QtGui import QKeySequence, QPainter, QPen, QPixmap, QPolygon
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QShortcut, QVBoxLayout, QWidget
 
 # points dans l'image corse2.png
 from corse2_png import POINTS
@@ -32,9 +32,7 @@ class LineLabel(QLabel):
         super().__init__(parent)
         if Path("corse2.json").exists():
             with Path("corse2.json").open() as f:
-                self.points = QPolygon(
-                    [QPoint(*p) for p in json.load(f)]
-                )
+                self.points = QPolygon([QPoint(*p) for p in json.load(f)])
         else:
             self.points = QPolygon(QPoint(x, y) for x, y in POINTS)
         self.setMouseTracking(True)
@@ -61,8 +59,8 @@ class LineLabel(QLabel):
 
     def reset(self):
         self.points = QPolygon(QPoint(x, y) for x, y in POINTS)
-        self.edit_mode=False
-        self.measure_mode=False
+        self.edit_mode = False
+        self.measure_mode = False
         self.update()
 
     def mousePressEvent(self, event):

@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-
 # rene-d 2022
 
 import argparse
+import json
 import subprocess
 from pathlib import Path
-import json
 
 import numpy as np
 
-from corse1_png import POINTS  # relevé des points dans l'image corse1.png
+from corse2_png import POINTS  # relevé des points dans l'image corse1.png
 
 
 def rotate(xy, radians):
@@ -31,10 +30,40 @@ def tikz_draw_line(tikz, points, color, thickness="0.5pt", style=None, cycle=Fal
     tikz.append(rf"\draw[{style}line width={thickness},color={color}] {xy};")
 
 
+def orientation(polygon):
+    """
+    Détermination orientation du polygone.
+    [principe](https://fr.wikipedia.org/wiki/Orientation_de_courbe)
+    """
+
+    # sélection du point
+    x_max = 0
+    y_max = 0
+    i_max = None
+    for i, p in enumerate(polygon):
+        x, y = p
+        if x >= x_max:
+            x_max = x
+            if y >= y_max:
+                y_max = y
+                i_max = i
+
+    # matrice d'orientation
+    p1 = polygon[(i_max - 1) % len(polygon)]
+    p2 = polygon[i_max]
+    p3 = polygon[(i_max + 1) % len(polygon)]
+
+    o = np.array([[1, p1[0], p1[1]], [1, p2[0], p2[1]], [1, p3[0], p3[1]]])
+
+    return 1 if np.linalg.det(o) >= 0 else -1
+
+
 def tikz_image(corse, thickness, details=True):
 
     assert min(x for x, _ in corse) == 0
     assert min(y for _, y in corse) == 0
+
+    sens = orientation(corse)
 
     picture = []
     infos = []
@@ -46,11 +75,11 @@ def tikz_image(corse, thickness, details=True):
 \clip({(#1-0.5)},{(#2-0.5)}) rectangle ({(#3+0.5)},{(#4+0.5)});
 \draw[dashdotted,line width=1pt,color=black] ({(#1-0.5)},{(#2-0.5)}) rectangle ({(#3+0.5)},{(#4+0.5)});
 \node[rectangle,text=lightgray] (r) at ({((#1+#3)/2)},{((#2+#4)/2)}) {\Huge Page \thepage};
-\draw[dashed,line width=0.1pt,color=gray] (#1,#2) rectangle (#3,#4);
-"""
+\draw[dashed,line width=0.1pt,color=gray] (#1,#2) rectangle (#3,#4);"""
     )
 
     # dessine le contour
+    picture.append("% contour")
     tikz_draw_line(picture, corse, color="cyan", thickness="1pt", cycle=True)
 
     angles = []
@@ -93,41 +122,41 @@ def tikz_image(corse, thickness, details=True):
 
     interior = []  # bord intérieur
 
-    for i, p in enumerate(corse):
+    if details:
 
-        # points origine et extrémité
-        p1 = p
-        p2 = corse[(i + 1) % len(corse)]
+        for i, p in enumerate(corse):
 
-        # angles origine/extrémité
-        a1 = angles[(i - 1) % len(corse)]
-        a2 = angles[i]
+            picture.append(f"% segment {i + 1}")
 
-        v = np.array(p1) - np.array(p2)
-        u = v / np.linalg.norm(v) * thickness
+            # points origine et extrémité
+            p1 = p
+            p2 = corse[(i + 1) % len(corse)]
 
-        # affiche le numéro du segment
-        if details and np.linalg.norm(v) > 1:
-            xy_middle = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
-            picture.append(
-                rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};"
-            )
+            # angles origine/extrémité
+            a1 = angles[(i - 1) % len(corse)]
+            a2 = angles[i]
 
-        # traits de construction (pour vérifier les calculs!)
-        r = rotate(u, -np.pi / 2)
-        if details:
+            v = (np.array(p2) - np.array(p1)) * sens
+            u = v / np.linalg.norm(v) * thickness
+
+            # affiche le numéro du segment
+            if np.linalg.norm(v) > 1:
+                xy_middle = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
+                picture.append(rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};")
+
+            # traits de construction (pour vérifier les calculs!)
+            r = rotate(u, -np.pi / 2)
             tikz_draw_line(picture, [p1, (*(r + p1),), (*(r + p2),), p2], color="black", style="dotted")
 
-        if a2 >= 0:
-            color = "red"  # coupe angle aigu
-        else:
-            color = "green"  # coupe angle obtus
+            if a2 >= 0:
+                color = "red"  # coupe angle aigu
+            else:
+                color = "green"  # coupe angle obtus
 
-        xy = rotate(u / np.sin(a2 / 2), -a2 / 2) + p2
-        xy = (*xy,)
-        interior.append(xy)
+            xy = rotate(u / np.sin(a2 / 2), -a2 / 2) + p2
+            xy = (*xy,)
+            interior.append(xy)
 
-        if details:
             # trace le trait de coupe [a,b]
             a = p2
             b = xy
@@ -139,12 +168,10 @@ def tikz_image(corse, thickness, details=True):
             # angle du contour
             p_angle = a - ab * 0.4
             angle = np.degrees(a2)
-            picture.append(
-                rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};"
-            )
+            picture.append(rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};")
 
-    # dessine le contour intérieur
-    if details:
+        # dessine le contour intérieur
+        picture.append("% contour intérieur")
         tikz_draw_line(picture, interior, color="black", thickness="0.5pt", style="densely dotted", cycle=True)
 
     picture.append(r"\end{tikzpicture}")
@@ -156,22 +183,29 @@ def tikz_image(corse, thickness, details=True):
     # - la longueur du profilé est la surface du contour divisée par l'épaisseur
     # - la surface du contour est la somme des surfaces des trapèzes, soit (∑(l1+l2))*h/2
     # - et donc la longueur du profilé est ∑(l1+l2)/2
-    mid_length = 0
+    length_contour = 0
     for i in range(len(corse)):
         p1 = corse[i]
         p2 = corse[(i + 1) % len(corse)]
         v1_2 = np.array(p1) - np.array(p2)
+        length_contour += np.linalg.norm(v1_2)
 
+    length_interior = 0
+    for i in range(len(interior)):
         p1 = interior[i]
         p2 = interior[(i + 1) % len(corse)]
         v2_3 = np.array(p1) - np.array(p2)
-        mid_length += np.linalg.norm(v1_2) + np.linalg.norm(v2_3)
-    mid_length = mid_length / 2
+        length_interior += np.linalg.norm(v2_3)
+
+    if len(interior) > 0:
+        mid_length = (length_contour + length_interior) / 2
+    else:
+        mid_length = length_contour
 
     max_x = max(x for x, _ in corse)
     max_y = max(y for _, y in corse)
 
-    dimensions = [round(max_x, 2), round(max_y, 2), round(mid_length, 1), round(mid_length + len(infos) * 0.2, 1)]
+    dimensions = [round(max_x, 2), round(max_y, 2), round(length_contour, 1), round(mid_length + len(infos) * 0.2, 1)]
 
     return "\n".join(picture), infos, dimensions
 
@@ -186,7 +220,7 @@ def tikz_corse(picture, x1, y1, col, row, landscape=True):
         return r"\newpage" + page
 
 
-def calcule(width, thickness,  points,show_details=False, output_file=None):
+def calcule(width, thickness, points, show_details=False, output_file=None, recto=False):
 
     page_x, page_y = 27, 18
 
@@ -199,7 +233,14 @@ def calcule(width, thickness,  points,show_details=False, output_file=None):
     model = []
     for x, y in points:
         x = (x - min_x) * scale_width
-        y = (y - min_y) * scale_width
+
+        # Nota: le polygone est censé être à l'endroit dans le repère de l'écran (0,0) en haut à gauche
+        # et donc à l'envers dans un repère mathématique classique comme celui utilisé par TikZ
+        if recto:
+            y = (max_y - y) * scale_width
+        else:
+            y = (y - min_y) * scale_width
+
         model.append((x, y))
 
     picture_command, infos, (dim_x, dim_y, mean_length, mean_length_real) = tikz_image(model, thickness, show_details)
@@ -213,6 +254,7 @@ def calcule(width, thickness,  points,show_details=False, output_file=None):
 \usepackage{pgfplotstable}
 \usepackage{graphicx}
 \usepackage{colortbl}
+\usepackage{multicol}
 
 \pgfplotsset{compat=1.18}
 \pagestyle{empty}
@@ -249,17 +291,22 @@ def calcule(width, thickness,  points,show_details=False, output_file=None):
 
     document.append(r"\newpage\subsection*{Dimensions}")
     document.append(f"Taille : {dim_x} cm $\\times$ {dim_y} cm\\newline")
-    document.append(f"Ratio x/y: {round(dim_x/dim_y,4)}\\newline")
-    document.append(f"Longueur moyenne: {mean_length} cm\\newline")
-    document.append(f"Longueur profilé: {mean_length_real} cm (avec trait de coupe 2 mm)\\newline")
+    document.append(f"Ratio x/y : {round(dim_x/dim_y,4)}\\newline")
+    document.append(f"Longueur contour : {mean_length} cm\\newline")
+    document.append(f"Longueur profilé : {mean_length_real} cm (longueur moyenne + trait de coupe 2 mm)\\newline")
 
-    document.append(f"Cadre : {page_x} cm $\\times$ {page_y} cm\\newline")
+    document.append(f"Cadre : {page_x} cm $\\times$ {page_y} cm")
 
     document.append(
         r"""\subsection*{Segments}
-\textit{Les angles sont donnés pour l'extrémité de fin du segment (avec le segment suivant donc).}\newline
-\newline
-\pgfplotstabletypeset[
+\textit{Les angles sont donnés pour l'extrémité de fin du segment (donc avec le segment suivant).}
+"""
+    )
+    document.append(r"\begin{multicols*}{3}\noindent")
+
+    for col in range(0, len(infos), 40):
+        document.append(
+            r"""\pgfplotstabletypeset[
 	col sep=comma,
 	every head row/.style={before row=\hline,after row=\hline},
 	every last row/.style={after row=\hline},
@@ -268,31 +315,32 @@ def calcule(width, thickness,  points,show_details=False, output_file=None):
     every even row/.style={before row={\rowcolor[gray]{0.93}}},
 	columns/Longueur/.style = {column type/.add={}{|}},
 	columns/Angle/.style = {column type/.add={}{|}}
-]{
-"""
-    )
-
-    document.append(r"N,Longueur,Angle,Coupe")
-
-    for i, info in enumerate(infos):
-        prev_info = infos[(i - 1) % len(infos)]
-        line = map(
-            str,
-            (
-                info[0],  # numéro
-                # info[1],
-                # info[2],  # coordonnées début
-                info[3],  # longueur
-                # prev_info[4],
-                # prev_info[5],  # angles avec le segment précédent
-                info[4],
-                info[5],  # angles avec le segment suivant
-            ),
+]{"""
         )
-        document.append(",".join(line))
-    document.append("}")
+        document.append(r"N,Longueur,Angle,Coupe")
 
-    document.append(r"\section*{} {\color{gray} Made with {\ensuremath\heartsuit} in Corsica}")
+        for i, info in enumerate(infos[col : col + 40]):
+            prev_info = infos[(i - 1) % len(infos)]
+            line = map(
+                str,
+                (
+                    info[0],  # numéro
+                    # info[1],
+                    # info[2],  # coordonnées début
+                    info[3],  # longueur
+                    # prev_info[4],
+                    # prev_info[5],  # angles avec le segment précédent
+                    info[4],
+                    info[5],  # angles avec le segment suivant
+                ),
+            )
+            document.append(",".join(line))
+        document.append("}")
+        document.append("")
+
+    document.append(r"\end{multicols*}")
+
+    # document.append(r"\section*{} {\color{gray} Made with {\ensuremath\heartsuit} in Corsica}")
     document.append(r"\end{document}")
 
     with Path("corse.tex").open("wt") as f:
@@ -318,13 +366,15 @@ def calcule(width, thickness,  points,show_details=False, output_file=None):
 def main():
 
     parse = argparse.ArgumentParser(
-        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> cm"
+        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <taille> cm"
     )
     parse.add_argument("-c", "--contour", action="store_true", help="affiche le contour uniqument")
-    parse.add_argument("-o", "--output", type=Path, help="fichier PDF")
+    parse.add_argument("-r", "--recto", action="store_true", help="affiche le recto (verso par défaut)")
+    parse.add_argument("-i", "--input", type=Path, help="fichier de points")
+    parse.add_argument("-o", "--output", type=Path, help="fichier PDF généré")
     parse.add_argument(
         "size",
-        metavar="échelle",
+        metavar="taille",
         type=float,
         nargs="?",
         default=27,
@@ -341,12 +391,15 @@ def main():
 
     args = parse.parse_args()
 
-    if Path("corse2.json").exists():
-        points = json.loads(Path("corse2.json").read_text())
+    if args.input:
+        if args.input.exists():
+            points = json.loads(args.input.read_text())
+        else:
+            parse.error(f"{args.input} does not exist")
     else:
         points = POINTS
 
-    calcule(args.size, args.thickness / 10, points, not args.contour, output_file=args.output)
+    calcule(args.size, args.thickness / 10, points, not args.contour, output_file=args.output, recto=args.recto)
 
 
 if __name__ == "__main__":
