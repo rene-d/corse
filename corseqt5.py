@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 # rene-d 2022
 
+from email.charset import QP
 import json
 import math
 import sys
 from pathlib import Path
+import argparse
 
 from PyQt5.QtCore import QPoint, Qt
 from PyQt5.QtGui import QKeySequence, QPainter, QPen, QPixmap, QPolygon
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QShortcut, QVBoxLayout, QWidget
-
-# points dans l'image corse2.png
-from corse2_png import POINTS
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QShortcut, QVBoxLayout, QWidget, QFileDialog
 
 
 class LineLabel(QLabel):
@@ -28,13 +27,10 @@ class LineLabel(QLabel):
     edit_point = -1
     insert_point = -1
 
-    def __init__(self, parent):
+    def __init__(self, parent, points):
         super().__init__(parent)
-        if Path("corse2.json").exists():
-            with Path("corse2.json").open() as f:
-                self.points = QPolygon([QPoint(*p) for p in json.load(f)])
-        else:
-            self.points = QPolygon(QPoint(x, y) for x, y in POINTS)
+        self.default_points = points
+        self.points = QPolygon(p for p in self.default_points)
         self.setMouseTracking(True)
 
     def toggle_edit(self):
@@ -48,17 +44,17 @@ class LineLabel(QLabel):
             self.unsetCursor()
 
     def delete_point(self):
-        if self.edit_mode and self.edit_point >= 0:
+        if self.edit_mode and self.edit_point >= 0 and self.points.size() > 2:
             self.points.remove(self.edit_point)
             self.edit_point = -1
             self.update()
 
-    def save_points(self):
-        with open("corse2.json", "w") as f:
+    def save_points(self, path: Path):
+        with path.open("w") as f:
             json.dump(list((p.x(), p.y()) for p in self.points), f)
 
     def reset(self):
-        self.points = QPolygon(QPoint(x, y) for x, y in POINTS)
+        self.points = QPolygon(p for p in self.default_points)
         self.edit_mode = False
         self.measure_mode = False
         self.update()
@@ -148,8 +144,10 @@ class LineLabel(QLabel):
 
 
 class Contour(QWidget):
-    def __init__(self):
+    def __init__(self, image_path: Path, points_path: Path = None):
         super().__init__()
+        self.image_path = image_path
+        self.points_path = points_path or self.image_path.with_suffix(".json")
         self.initUI()
 
     def keyPressEvent(self, event):
@@ -157,12 +155,20 @@ class Contour(QWidget):
             self.close()
 
     def initUI(self):
-        self.setWindowTitle("Contour de la Corse")
+        self.setWindowTitle(f"Contour de {self.image_path.stem}")
 
-        pixmap = QPixmap("corse2.png")
+        pixmap = QPixmap(self.image_path.as_posix())
         pixmap = pixmap.scaled(1200, 1200, Qt.KeepAspectRatio)
 
-        self.contour = LineLabel(self)
+        if self.points_path.exists():
+            points = QPolygon([QPoint(*p) for p in json.loads(self.points_path.read_text())])
+        else:
+            r = pixmap.rect()
+            x_sixth = r.width() // 6
+            y_half = r.height() // 2
+            points = QPolygon((QPoint(x_sixth, y_half), QPoint(r.width() - x_sixth, y_half)))
+
+        self.contour = LineLabel(self, points)
         self.contour.setPixmap(pixmap)
         self.contour.setCursor(Qt.CrossCursor)
 
@@ -186,13 +192,38 @@ class Contour(QWidget):
 
         QShortcut(QKeySequence(Qt.Key_E), self, activated=self.contour.toggle_edit)
         QShortcut(QKeySequence(Qt.Key_Backspace), self, activated=self.contour.delete_point)
-        QShortcut(QKeySequence(Qt.Key_S), self, activated=self.contour.save_points)
+        QShortcut(QKeySequence(Qt.Key_S), self, activated=self.save_points)
         QShortcut(QKeySequence(Qt.Key_R), self, activated=self.contour.reset)
 
         self.show()
 
+    def save_points(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            f"Enregistrer le contour de {self.image_path.stem}",
+            self.points_path.as_posix(),
+            "JSON (*.json)",
+            options=QFileDialog.DontConfirmOverwrite | QFileDialog.DontUseNativeDialog,
+        )
+
+        if filename:
+            filename = Path(filename)
+            if filename.suffix == "":
+                filename = filename.with_suffix(".json")
+            self.contour.save_points(filename)
+            print(f"Points enregistrés dans {filename}")
+            self.points_path = filename
+
 
 if __name__ == "__main__":
+
+    parse = argparse.ArgumentParser(
+        description="Tracé d'un contour", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30)
+    )
+    parse.add_argument("-i", "--image", type=Path, help="image", default="corse2.png")
+    parse.add_argument("-p", "--points", type=Path, help="fichier des points")
+    args = parse.parse_args()
+
     app = QApplication(sys.argv)
-    x = Contour()
+    x = Contour(args.image, args.points)
     sys.exit(app.exec_())

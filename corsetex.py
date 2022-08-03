@@ -2,13 +2,12 @@
 # rene-d 2022
 
 import argparse
+from curses import def_prog_mode
 import json
 import subprocess
 from pathlib import Path
 
 import numpy as np
-
-from corse2_png import POINTS  # relevé des points dans l'image corse1.png
 
 
 def rotate(xy, radians):
@@ -205,7 +204,7 @@ def tikz_image(corse, thickness, details=True):
     max_x = max(x for x, _ in corse)
     max_y = max(y for _, y in corse)
 
-    dimensions = [round(max_x, 2), round(max_y, 2), round(length_contour, 1), round(mid_length + len(infos) * 0.2, 1)]
+    dimensions = [round(max_x, 2), round(max_y, 2), round(length_contour, 1), round(mid_length + len(infos) * 0.2, 1), len(corse)]
 
     return "\n".join(picture), infos, dimensions
 
@@ -243,7 +242,7 @@ def calcule(width, thickness, points, show_details=False, output_file=None, rect
 
         model.append((x, y))
 
-    picture_command, infos, (dim_x, dim_y, mean_length, mean_length_real) = tikz_image(model, thickness, show_details)
+    picture_command, infos, (dim_x, dim_y, mean_length, mean_length_real, segments) = tikz_image(model, thickness, show_details)
 
     preambule = r"""\documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
@@ -292,7 +291,7 @@ def calcule(width, thickness, points, show_details=False, output_file=None, rect
     document.append(r"\newpage\subsection*{Dimensions}")
     document.append(f"Taille : {dim_x} cm $\\times$ {dim_y} cm\\newline")
     document.append(f"Ratio x/y : {round(dim_x/dim_y,4)}\\newline")
-    document.append(f"Longueur contour : {mean_length} cm\\newline")
+    document.append(f"Longueur contour : {mean_length} cm ({segments} segments)\\newline")
     document.append(f"Longueur profilé : {mean_length_real} cm (longueur moyenne + trait de coupe 2 mm)\\newline")
 
     document.append(f"Cadre : {page_x} cm $\\times$ {page_y} cm")
@@ -366,11 +365,12 @@ def calcule(width, thickness, points, show_details=False, output_file=None, rect
 def main():
 
     parse = argparse.ArgumentParser(
-        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <taille> cm"
+        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <taille> cm",
+        formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30),
     )
     parse.add_argument("-c", "--contour", action="store_true", help="affiche le contour uniqument")
     parse.add_argument("-r", "--recto", action="store_true", help="affiche le recto (verso par défaut)")
-    parse.add_argument("-i", "--input", type=Path, help="fichier de points")
+    parse.add_argument("-p", "--points", type=Path, help="fichier de points", default="corse2.json")
     parse.add_argument("-o", "--output", type=Path, help="fichier PDF généré")
     parse.add_argument(
         "size",
@@ -391,13 +391,10 @@ def main():
 
     args = parse.parse_args()
 
-    if args.input:
-        if args.input.exists():
-            points = json.loads(args.input.read_text())
-        else:
-            parse.error(f"{args.input} does not exist")
+    if args.points.exists():
+        points = json.loads(args.points.read_text())
     else:
-        points = POINTS
+        parse.error(f"{args.points} does not exist")
 
     calcule(args.size, args.thickness / 10, points, not args.contour, output_file=args.output, recto=args.recto)
 

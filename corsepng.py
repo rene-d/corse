@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from corse1_png import POINTS  # relevé des points dans l'image corse1.png
+from corse2_png import POINTS  # relevé des points dans l'image corse2.png
 
 
 def rotate(xy, radians):
@@ -26,15 +26,18 @@ def calcule(
     show_background=False,
     points=POINTS,
 ):
+    scale_x = 1876 / 1200
+    SIZE_X = 1876 / scale_x
+    SIZE_Y = 1024 / scale_x
 
-    scale = 1000 / 424
-    corse = [(x * scale, y * scale) for x, y in points]
+    scale_y = 1000 / SIZE_Y
+    corse = [(x * scale_y, y * scale_y) for x, y in points]
 
     if show_background:
-        image = Image.open("corse1.png")
-        image = image.resize((round(776 * scale), 1000), Image.Resampling.BICUBIC)
+        image = Image.open("corse2.png")
+        image = image.resize((round(SIZE_X * scale_y), 1000), Image.Resampling.BICUBIC)
     else:
-        image = Image.new("RGB", size=(round(776 * scale), 1000), color=(255, 255, 255))
+        image = Image.new("RGB", size=(round(SIZE_X * scale_y), 1000), color=(255, 255, 255))
 
     font_number = ImageFont.truetype("HelveticaNeue.ttc", 16)
     font_angle = ImageFont.truetype("HelveticaNeue.ttc", 20)
@@ -48,7 +51,7 @@ def calcule(
     dim_y = max(map(operator.itemgetter(1), corse)) - min(map(operator.itemgetter(1), corse))
 
     # ajuste le coefficient d'échelle
-    scale = width / dim_x
+    scale_y = width / dim_x
 
     # contexte PIL pour dessiner dans l'image
     draw = ImageDraw.Draw(image)
@@ -102,7 +105,7 @@ def calcule(
         angles.append(angle)
 
         angle = np.degrees(angle)
-        length = np.linalg.norm(v1) * scale
+        length = np.linalg.norm(v1) * scale_y
 
         total_length += length
 
@@ -169,7 +172,7 @@ def calcule(
         a2 = angles[i]
 
         v = np.array(p1) - np.array(p2)  # Nota: le polygone est orienté négativement
-        u = v / np.linalg.norm(v) * thickness / scale
+        u = v / np.linalg.norm(v) * thickness / scale_y
 
         # traits de construction (pour vérifier les calculs!)
         r = rotate(u, -np.pi / 2)
@@ -207,7 +210,7 @@ def calcule(
         p2 = interior[(i + 1) % len(corse)]
         v2 = np.array(p1) - np.array(p2)
         mid_length += np.linalg.norm(v1) + np.linalg.norm(v2)
-    mid_length = mid_length / 2 * scale
+    mid_length = mid_length / 2 * scale_y
 
     print(f"overall width:  {width} mm")
     print(f"outline length: {total_length:.0f} mm")
@@ -216,7 +219,7 @@ def calcule(
     print(f"image size: {image.size}")
 
     # dimensions Corse et longueur du contour
-    info = f"dim: {dim_x*scale:.1f} x {dim_y*scale:.1f} mm\ncontour: {total_length:.0f} mm\nthickness: {thickness} mm"
+    info = f"dim: {dim_x*scale_y:.1f} x {dim_y*scale_y:.1f} mm\ncontour: {total_length:.0f} mm\nthickness: {thickness} mm"
     tw, th = draw.textsize(info, font=font_fixed)
     draw.text(
         ((image_width - tw) / 2, (image_height - th) / 2),
@@ -289,7 +292,8 @@ def show_model(output=None):
 def main():
 
     parse = argparse.ArgumentParser(
-        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> cm"
+        description="Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> cm",
+        formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30),
     )
     parse.add_argument("-m", "--model", action="store_true", help="affiche le modèle en fond")
     parse.add_argument("-o", "--output", type=Path, help="fichier PNG généré")

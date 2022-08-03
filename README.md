@@ -2,24 +2,66 @@
 
 ## Synopsis
 
-Calcule les longueurs et angles de découpe du contour de la Corse.
+Outils pour établir un contour d'une image et calculer les longueurs et angles de découpe.
 
 ## Usage
 
+### Tracer, créer le contour
+
 ```text
-usage: corsetex.py [-h] [-c] [-o OUTPUT] [échelle] [épaisseur]
+usage: corseqt5.py [-h] [-i IMAGE] [-p POINTS]
+
+Tracé d'un contour
+
+options:
+  -h, --help                  show this help message and exit
+  -i IMAGE, --image IMAGE     image
+  -p POINTS, --points POINTS  fichier des points
+```
+
+Touches:
+
+- `E` : bascule mode Edition
+  - cercle bleu: déplace un sommet
+  - cercle jaune: ajouter un segment
+  - `⌫` : supprime le sommet bleu sélectionné
+- `S`: sauvegarde le contour
+- `R`: réinitialise le contour avec les valeurs initiales
+
+## Afficher, imprimer
+
+```text
+usage: corsetex.py [-h] [-c] [-r] [-p POINTS] [-o OUTPUT] [taille] [épaisseur]
+
+Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <taille> cm
+
+positional arguments:
+  taille                      taille du modèle en cm
+  épaisseur                   épaisseur profilé en mm
+
+options:
+  -h, --help                  show this help message and exit
+  -c, --contour               affiche le contour uniqument
+  -r, --recto                 affiche le recto (verso par défaut)
+  -p POINTS, --points POINTS  fichier de points
+  -o OUTPUT, --output OUTPUT  fichier PDF généré
+```
+
+### Afficher (ancienne verssion)
+
+```text
+usage: corsepng.py [-h] [-m] [-o OUTPUT] [échelle] [épaisseur]
 
 Calcule les angles et longueurs du contour de <épaisseur> mm pour une longueur totale de <échelle> cm
 
 positional arguments:
-  échelle               taille du modèle en cm
-  épaisseur             épaisseur profilé en mm
+  échelle                     hauteur du modèle en cm
+  épaisseur                   épaisseur profilé en mm
 
 options:
-  -h, --help            show this help message and exit
-  -c, --contour         affiche le contour uniqument
-  -o OUTPUT, --output OUTPUT
-                        fichier PDF
+  -h, --help                  show this help message and exit
+  -m, --model                 affiche le modèle en fond
+  -o OUTPUT, --output OUTPUT  fichier PNG généré
 ```
 
 ## Prérequis
