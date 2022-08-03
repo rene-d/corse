@@ -7,8 +7,9 @@ import tkinter as tk
 from pathlib import Path
 
 import numpy as np
-from corse_png import POINTS  # relevé des points dans l'image corse.png
 from PIL import Image, ImageDraw, ImageFont, ImageTk
+
+from corse_png import POINTS  # relevé des points dans l'image corse.png
 
 
 def rotate(xy, radians):

@@ -43,9 +43,11 @@ def orientation(polygon):
         x, y = p
         if x >= x_max:
             x_max = x
-            if y >= y_max:
-                y_max = y
-                i_max = i
+            y_max = y
+            i_max = i
+        elif x == x_max and y > y_max:
+            y_max = y
+            i_max = i
 
     # matrice d'orientation
     p1 = polygon[(i_max - 1) % len(polygon)]
