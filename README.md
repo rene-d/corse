@@ -1,4 +1,4 @@
-# Corse
+# Corsica + Breizh
 
 ## Synopsis
 
@@ -47,7 +47,7 @@ options:
   -o OUTPUT, --output OUTPUT  fichier PDF généré
 ```
 
-### Afficher (ancienne verssion)
+### Afficher (ancienne version)
 
 ```text
 usage: corsepng.py [-h] [-m] [-o OUTPUT] [échelle] [épaisseur]
@@ -66,4 +66,4 @@ options:
 
 ## Prérequis
 
-[LaTeX](https://www.tug.org/texlive/), [Pillow](https://python-pillow.org), [numpy](https://numpy.org)
+[LaTeX](https://www.tug.org/texlive/), [Pillow](https://python-pillow.org), [numpy](https://numpy.org), [PyQt5](https://www.riverbankcomputing.com/software/pyqt/intro)
