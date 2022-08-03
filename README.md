@@ -1,8 +1,11 @@
 # Corsica + Breizh
 
+![screenshot](./screenshot.gif)
+
 ## Synopsis
 
 Outils pour établir un contour d'une image et calculer les longueurs et angles de découpe.
+
 
 ## Usage
 

@@ -2,9 +2,9 @@
 # rene-d 2022
 
 import argparse
-from curses import def_prog_mode
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -141,7 +141,9 @@ def tikz_image(corse, thickness, details=True):
             # affiche le numéro du segment
             if np.linalg.norm(v) > 1:
                 xy_middle = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
-                picture.append(rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};")
+                picture.append(
+                    rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};"
+                )
 
             # traits de construction (pour vérifier les calculs!)
             r = rotate(u, -np.pi / 2)
@@ -167,7 +169,9 @@ def tikz_image(corse, thickness, details=True):
             # angle du contour
             p_angle = a - ab * 0.4
             angle = np.degrees(a2)
-            picture.append(rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};")
+            picture.append(
+                rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};"
+            )
 
         # dessine le contour intérieur
         picture.append("% contour intérieur")
@@ -204,7 +208,13 @@ def tikz_image(corse, thickness, details=True):
     max_x = max(x for x, _ in corse)
     max_y = max(y for _, y in corse)
 
-    dimensions = [round(max_x, 2), round(max_y, 2), round(length_contour, 1), round(mid_length + len(infos) * 0.2, 1), len(corse)]
+    dimensions = [
+        round(max_x, 2),
+        round(max_y, 2),
+        round(length_contour, 1),
+        round(mid_length + len(infos) * 0.2, 1),
+        len(corse),
+    ]
 
     return "\n".join(picture), infos, dimensions
 
@@ -242,7 +252,9 @@ def calcule(width, thickness, points, show_details=False, output_file=None, rect
 
         model.append((x, y))
 
-    picture_command, infos, (dim_x, dim_y, mean_length, mean_length_real, segments) = tikz_image(model, thickness, show_details)
+    picture_command, infos, (dim_x, dim_y, mean_length, mean_length_real, segments) = tikz_image(
+        model, thickness, show_details
+    )
 
     preambule = r"""\documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
@@ -342,24 +354,20 @@ def calcule(width, thickness, points, show_details=False, output_file=None, rect
     # document.append(r"\section*{} {\color{gray} Made with {\ensuremath\heartsuit} in Corsica}")
     document.append(r"\end{document}")
 
-    with Path("corse.tex").open("wt") as f:
+    with output_file.with_suffix(".tex").open("wt") as f:
         f.write(preambule)
         f.write(picture_command)
         f.write("\n".join(document))
 
     try:
-        subprocess.check_call(["texfot", "latex", "-output-format=pdf", "-interaction=nonstopmode", "corse.tex"])
-        if output_file and output_file.absolute() != Path("corse.pdf").absolute():
-            output_file.write_bytes(Path("corse.pdf").read_bytes())
+        subprocess.check_call(
+            ["texfot", "latex", "-output-format=pdf", "-interaction=nonstopmode", output_file.with_suffix(".tex")]
+        )
+        # if output_file and output_file.absolute() != Path("corse.pdf").absolute():
+        #     output_file.write_bytes(Path("corse.pdf").read_bytes())
     except subprocess.CalledProcessError as e:
         print(e)
         exit(2)
-
-    try:
-        if not Path("/.dockerenv").exists() and not output_file:
-            subprocess.run(["open", "corse.pdf"])
-    except subprocess.CalledProcessError:
-        pass
 
 
 def main():
@@ -370,7 +378,7 @@ def main():
     )
     parse.add_argument("-c", "--contour", action="store_true", help="affiche le contour uniqument")
     parse.add_argument("-r", "--recto", action="store_true", help="affiche le recto (verso par défaut)")
-    parse.add_argument("-p", "--points", type=Path, help="fichier de points", default="corse2.json")
+    parse.add_argument("-p", "--points", type=Path, help="fichier de points", default="corse.json")
     parse.add_argument("-o", "--output", type=Path, help="fichier PDF généré")
     parse.add_argument(
         "size",
@@ -396,7 +404,19 @@ def main():
     else:
         parse.error(f"{args.points} does not exist")
 
+    if not args.output:
+        args.output = args.points.with_suffix(".pdf")
+        show_pdf = True
+    else:
+        show_pdf = False
+
     calcule(args.size, args.thickness / 10, points, not args.contour, output_file=args.output, recto=args.recto)
+
+    try:
+        if show_pdf and not Path("/.dockerenv").exists() and sys.platform == "darwin":
+            subprocess.run(["open", args.output])
+    except subprocess.CalledProcessError:
+        pass
 
 
 if __name__ == "__main__":

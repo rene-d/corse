@@ -47,13 +47,13 @@ def affine(x, y, a, v):
     return a * x + v[0], y * a + v[1]
 
 
-# adapte les points à corse2.png pour une largeur de 1200 pixels
+# adapte les points à corse.png pour une largeur de 1200 pixels
 POINTS = list(rotate(*affine(x, y, 1.49, (29, -21)), -0.073) for x, y in corse_raw)
 
 if __name__ == "__main__":
+    from argparse import ArgumentParser
     from json import dumps
     from pathlib import Path
-    from argparse import ArgumentParser
 
     image_path = Path(__file__).with_name(Path(__file__).stem.replace("_", "."))
     points_path = image_path.with_suffix(".json")

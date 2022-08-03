@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # rene-d 2022
 
-from email.charset import QP
+import argparse
 import json
 import math
 import sys
+from email.charset import QP
 from pathlib import Path
-import argparse
 
 from PyQt5.QtCore import QPoint, Qt
 from PyQt5.QtGui import QKeySequence, QPainter, QPen, QPixmap, QPolygon
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QShortcut, QVBoxLayout, QWidget, QFileDialog
+from PyQt5.QtWidgets import QApplication, QFileDialog, QHBoxLayout, QLabel, QShortcut, QVBoxLayout, QWidget
 
 
 class LineLabel(QLabel):
@@ -218,9 +218,10 @@ class Contour(QWidget):
 if __name__ == "__main__":
 
     parse = argparse.ArgumentParser(
-        description="Tracé d'un contour", formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30)
+        description="Tracé d'un contour",
+        formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30),
     )
-    parse.add_argument("-i", "--image", type=Path, help="image", default="corse2.png")
+    parse.add_argument("-i", "--image", type=Path, help="image", default="corse.png")
     parse.add_argument("-p", "--points", type=Path, help="fichier des points")
     args = parse.parse_args()
 

@@ -7,9 +7,8 @@ import tkinter as tk
 from pathlib import Path
 
 import numpy as np
+from corse_png import POINTS  # relevé des points dans l'image corse.png
 from PIL import Image, ImageDraw, ImageFont, ImageTk
-
-from corse2_png import POINTS  # relevé des points dans l'image corse2.png
 
 
 def rotate(xy, radians):
@@ -34,7 +33,7 @@ def calcule(
     corse = [(x * scale_y, y * scale_y) for x, y in points]
 
     if show_background:
-        image = Image.open("corse2.png")
+        image = Image.open("corse.png")
         image = image.resize((round(SIZE_X * scale_y), 1000), Image.Resampling.BICUBIC)
     else:
         image = Image.new("RGB", size=(round(SIZE_X * scale_y), 1000), color=(255, 255, 255))
@@ -219,7 +218,9 @@ def calcule(
     print(f"image size: {image.size}")
 
     # dimensions Corse et longueur du contour
-    info = f"dim: {dim_x*scale_y:.1f} x {dim_y*scale_y:.1f} mm\ncontour: {total_length:.0f} mm\nthickness: {thickness} mm"
+    info = (
+        f"dim: {dim_x*scale_y:.1f} x {dim_y*scale_y:.1f} mm\ncontour: {total_length:.0f} mm\nthickness: {thickness} mm"
+    )
     tw, th = draw.textsize(info, font=font_fixed)
     draw.text(
         ((image_width - tw) / 2, (image_height - th) / 2),
