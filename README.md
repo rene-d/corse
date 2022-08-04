@@ -11,7 +11,7 @@ Outils pour établir un contour d'une image et calculer les longueurs et angles 
 ### Tracer, créer le contour
 
 ```text
-usage: corseqt5.py [-h] [-i IMAGE] [-p POINTS]
+usage: corseqt6.py [-h] [-i IMAGE] [-p POINTS]
 
 Tracé d'un contour
 
@@ -30,6 +30,7 @@ Actions:
 - `S` : sauvegarde le contour
 - `L` : charge un contour
 - `R` : réinitialise le contour avec les valeurs initiales
+- `Q` ou `␛` : quitte le programme
 
 ## Afficher, imprimer
 
@@ -65,6 +66,19 @@ options:
   -h, --help                  show this help message and exit
   -m, --model                 affiche le modèle en fond
   -o OUTPUT, --output OUTPUT  fichier PNG généré
+```
+
+## Utilisation de Docker
+
+`corsetex.py` peut être lancé depuis un conteneur Docker avec le `Dockerfile` suivant:
+
+
+```dockerfile
+FROM texlive/texlive:latest
+RUN apt-get update && apt-get install -y python3-numpy
+COPY corsetex.py /
+WORKDIR /out
+ENTRYPOINT ["/corsetex.py"]
 ```
 
 ## Prérequis

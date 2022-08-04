@@ -143,9 +143,7 @@ def tikz_image(corse, thickness, details=True):
             # affiche le numéro du segment
             if np.linalg.norm(v) > 1:
                 xy_middle = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
-                picture.append(
-                    rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};"
-                )
+                picture.append(rf"\draw[color=black] ({xy_middle[0]},{xy_middle[1]}) node[rectangle,draw,fill=white] {{\tiny ${1+i}$}};")
 
             # traits de construction (pour vérifier les calculs!)
             r = rotate(u, -np.pi / 2)
@@ -171,9 +169,7 @@ def tikz_image(corse, thickness, details=True):
             # angle du contour
             p_angle = a - ab * 0.4
             angle = np.degrees(a2)
-            picture.append(
-                rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};"
-            )
+            picture.append(rf"\draw[color=violet] ({p_angle[0]},{p_angle[1]}) node[] {{\tiny ${angle:.0f}$\textdegree}};")
 
         # dessine le contour intérieur
         picture.append("% contour intérieur")
@@ -254,9 +250,7 @@ def calcule(width, thickness, points, show_details=False, output_file=None, rect
 
         model.append((x, y))
 
-    picture_command, infos, (dim_x, dim_y, mean_length, mean_length_real, segments) = tikz_image(
-        model, thickness, show_details
-    )
+    picture_command, infos, (dim_x, dim_y, mean_length, mean_length_real, segments) = tikz_image(model, thickness, show_details)
 
     preambule = r"""\documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
@@ -362,11 +356,7 @@ def calcule(width, thickness, points, show_details=False, output_file=None, rect
         f.write("\n".join(document))
 
     try:
-        subprocess.check_call(
-            ["texfot", "latex", "-output-format=pdf", "-interaction=nonstopmode", output_file.with_suffix(".tex")]
-        )
-        # if output_file and output_file.absolute() != Path("corse.pdf").absolute():
-        #     output_file.write_bytes(Path("corse.pdf").read_bytes())
+        subprocess.check_call(["texfot", "latex", "-output-format=pdf", "-interaction=nonstopmode", output_file.with_suffix(".tex")])
     except subprocess.CalledProcessError as e:
         print(e)
         exit(2)

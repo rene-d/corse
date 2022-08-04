@@ -154,7 +154,7 @@ class Contour(QWidget):
         self.initUI()
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Q:
+        if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
             self.close()
 
     def initUI(self):
@@ -167,8 +167,8 @@ class Contour(QWidget):
             points = list([QPoint(*p) for p in json.loads(self.points_path.read_text())])
         else:
             r = pixmap.rect()
-            x_sixth = r.width() / 6
-            y_half = r.height() / 2
+            x_sixth = r.width() // 6
+            y_half = r.height() // 2
             points = list((QPoint(x_sixth, y_half), QPoint(r.width() - x_sixth, y_half)))
 
         self.contour = LineLabel(self, points)

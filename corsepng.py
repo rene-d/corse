@@ -26,7 +26,7 @@ def calcule(
     show_background=False,
     points=POINTS,
 ):
-    scale_x = 1876 / 1200
+    scale_x = 1876 / 1200  # les points sont pour une image de 1200 pixels de largeur
     SIZE_X = 1876 / scale_x
     SIZE_Y = 1024 / scale_x
 
@@ -219,9 +219,7 @@ def calcule(
     print(f"image size: {image.size}")
 
     # dimensions Corse et longueur du contour
-    info = (
-        f"dim: {dim_x*scale_y:.1f} x {dim_y*scale_y:.1f} mm\ncontour: {total_length:.0f} mm\nthickness: {thickness} mm"
-    )
+    info = f"dim: {dim_x*scale_y:.1f} x {dim_y*scale_y:.1f} mm\ncontour: {total_length:.0f} mm\nthickness: {thickness} mm"
     tw, th = draw.textsize(info, font=font_fixed)
     draw.text(
         ((image_width - tw) / 2, (image_height - th) / 2),
@@ -268,8 +266,6 @@ def show_model(output=None):
 
         if event.type == tk.EventType.Motion:
             return
-
-        # print("event", event)
 
         if event.keysym == "Escape" or event.keysym == "q" or event.keysym == "x":
             root.destroy()
