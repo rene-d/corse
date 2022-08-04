@@ -6,7 +6,6 @@
 
 Outils pour établir un contour d'une image et calculer les longueurs et angles de découpe.
 
-
 ## Usage
 
 ### Tracer, créer le contour
@@ -22,14 +21,15 @@ options:
   -p POINTS, --points POINTS  fichier des points
 ```
 
-Touches:
+Actions:
 
 - `E` : bascule mode Edition
   - cercle bleu: déplace un sommet
-  - cercle jaune: ajouter un segment
+  - cercle jaune: ajoute un segment
   - `⌫` : supprime le sommet bleu sélectionné
-- `S`: sauvegarde le contour
-- `R`: réinitialise le contour avec les valeurs initiales
+- `S` : sauvegarde le contour
+- `L` : charge un contour
+- `R` : réinitialise le contour avec les valeurs initiales
 
 ## Afficher, imprimer
 
@@ -69,4 +69,4 @@ options:
 
 ## Prérequis
 
-[LaTeX](https://www.tug.org/texlive/), [Pillow](https://python-pillow.org), [numpy](https://numpy.org), [PyQt5](https://www.riverbankcomputing.com/software/pyqt/intro)
+[LaTeX](https://www.tug.org/texlive/), [Pillow](https://python-pillow.org), [numpy](https://numpy.org), [PySide6](https://doc.qt.io/qtforpython/index.html)

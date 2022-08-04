@@ -5,12 +5,11 @@ import argparse
 import json
 import math
 import sys
-from email.charset import QP
 from pathlib import Path
 
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QKeySequence, QPainter, QPen, QPixmap, QPolygon
-from PyQt5.QtWidgets import QApplication, QFileDialog, QHBoxLayout, QLabel, QShortcut, QVBoxLayout, QWidget
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QKeySequence, QPainter, QPen, QPixmap, QPolygon, QShortcut, QMouseEvent
+from PySide6.QtWidgets import QApplication, QFileDialog, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 
 class LineLabel(QLabel):
@@ -30,7 +29,7 @@ class LineLabel(QLabel):
     def __init__(self, parent, points):
         super().__init__(parent)
         self.default_points = points
-        self.points = QPolygon(p for p in self.default_points)
+        self.points = QPolygon(self.default_points)
         self.setMouseTracking(True)
 
     def toggle_edit(self):
@@ -54,22 +53,26 @@ class LineLabel(QLabel):
             json.dump(list((p.x(), p.y()) for p in self.points), f)
 
     def reset(self):
-        self.points = QPolygon(p for p in self.default_points)
+        self.points = QPolygon(self.default_points)
         self.edit_mode = False
         self.measure_mode = False
         self.update()
 
-    def mousePressEvent(self, event):
+    def load_points(self, path: Path):
+        self.default_points = list([QPoint(*p) for p in json.loads(path.read_text())])
+        self.reset()
+
+    def mousePressEvent(self, event: QMouseEvent):
         self.flag = True
-        self.x0 = event.x()
-        self.y0 = event.y()
+        self.x0 = event.position().toPoint().x()
+        self.y0 = event.position().toPoint().y()
 
         if self.edit_mode and self.insert_point >= 0:
-            self.points.insert(self.insert_point, QPoint(event.x(), event.y()))
+            self.points.insert(self.insert_point, event.position().toPoint())
             self.edit_point = self.insert_point
             self.insert_point = -1
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         self.flag = False
         if self.edit_mode:
             pass
@@ -83,14 +86,14 @@ class LineLabel(QLabel):
                 + f" | θ: {round(math.degrees(math.atan2(self.y1 - self.y0, self.x1 - self.x0)), 1)}°"
             )
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
         if self.flag:
             if self.edit_mode:
                 if self.edit_point >= 0:
-                    self.points[self.edit_point] = QPoint(event.x(), event.y())
+                    self.points[self.edit_point] = event.position().toPoint()
             else:
-                self.x1 = event.x()
-                self.y1 = event.y()
+                self.x1 = event.position().toPoint().x()
+                self.y1 = event.position().toPoint().y()
             self.update()
 
         elif self.edit_mode:
@@ -100,13 +103,13 @@ class LineLabel(QLabel):
             self.insert_point = -1
 
             for i, p in enumerate(self.points):
-                if (p - event.pos()).manhattanLength() < 5:
+                if (p - event.position().toPoint()).manhattanLength() < 5:
                     self.edit_point = i
                     self.setCursor(Qt.SizeAllCursor)
                     self.info_event(f"Edit point: {i}")
                     break
 
-                if ((p + prev_p) / 2 - event.pos()).manhattanLength() < 5:
+                if ((p + prev_p) / 2 - event.position().toPoint()).manhattanLength() < 5:
                     self.insert_point = i
                     self.setCursor(Qt.SplitHCursor)
                     self.info_event(f"Add point: {i}")
@@ -119,7 +122,7 @@ class LineLabel(QLabel):
                 self.unsetCursor()
 
         if self.move_event:
-            self.move_event(event.x(), event.y())
+            self.move_event(event.position().toPoint())
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -161,12 +164,12 @@ class Contour(QWidget):
         pixmap = pixmap.scaled(1200, 1200, Qt.KeepAspectRatio)
 
         if self.points_path.exists():
-            points = QPolygon([QPoint(*p) for p in json.loads(self.points_path.read_text())])
+            points = list([QPoint(*p) for p in json.loads(self.points_path.read_text())])
         else:
             r = pixmap.rect()
-            x_sixth = r.width() // 6
-            y_half = r.height() // 2
-            points = QPolygon((QPoint(x_sixth, y_half), QPoint(r.width() - x_sixth, y_half)))
+            x_sixth = r.width() / 6
+            y_half = r.height() / 2
+            points = list((QPoint(x_sixth, y_half), QPoint(r.width() - x_sixth, y_half)))
 
         self.contour = LineLabel(self, points)
         self.contour.setPixmap(pixmap)
@@ -187,13 +190,14 @@ class Contour(QWidget):
 
         lay.addLayout(lay2)
 
-        self.contour.move_event = lambda x, y: self.coords_label.setText("Coordonnées: ( %d , %d )" % (x, y))
+        self.contour.move_event = lambda pos: self.coords_label.setText("Coordonnées: ( %d , %d )" % (pos.x(), pos.y()))
         self.contour.info_event = lambda x: self.info_label.setText(x)
 
         QShortcut(QKeySequence(Qt.Key_E), self, activated=self.contour.toggle_edit)
         QShortcut(QKeySequence(Qt.Key_Backspace), self, activated=self.contour.delete_point)
         QShortcut(QKeySequence(Qt.Key_S), self, activated=self.save_points)
         QShortcut(QKeySequence(Qt.Key_R), self, activated=self.contour.reset)
+        QShortcut(QKeySequence(Qt.Key_L), self, activated=self.load_points)
 
         self.show()
 
@@ -205,7 +209,6 @@ class Contour(QWidget):
             "JSON (*.json)",
             options=QFileDialog.DontConfirmOverwrite | QFileDialog.DontUseNativeDialog,
         )
-
         if filename:
             filename = Path(filename)
             if filename.suffix == "":
@@ -213,6 +216,19 @@ class Contour(QWidget):
             self.contour.save_points(filename)
             print(f"Points enregistrés dans {filename}")
             self.points_path = filename
+
+    def load_points(self):
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            f"Chrger le contour de {self.image_path.stem}",
+            "",
+            "JSON (*.json)",
+            options=QFileDialog.DontUseNativeDialog,
+        )
+        if filename:
+            filename = Path(filename)
+            if filename.is_file():
+                self.contour.load_points(Path(filename))
 
 
 if __name__ == "__main__":
@@ -227,4 +243,4 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     x = Contour(args.image, args.points)
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
