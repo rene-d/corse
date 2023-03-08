@@ -84,5 +84,3 @@ ENTRYPOINT ["/corsetex.py"]
 ## Prérequis
 
 [LaTeX](https://www.tug.org/texlive/), [Pillow](https://python-pillow.org), [numpy](https://numpy.org), [PySide6](https://doc.qt.io/qtforpython/index.html)
-
-## Dédié à mes amis bretons et corses !
